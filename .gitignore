@@ -1,0 +1,14 @@
+# Senhas e chaves: NUNCA vão para o GitHub (na hospedagem, ficam no painel dela)
+.env
+
+# Bibliotecas baixadas pelo "npm install" (recriadas a partir do package.json)
+node_modules/
+
+# Configurações locais do Claude Code (não fazem parte do site)
+.claude/
+
+# Arquivos que o sistema e o npm criam sozinhos
+npm-debug.log*
+Thumbs.db
+desktop.ini
+.DS_Store

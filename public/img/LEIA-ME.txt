@@ -1,0 +1,3 @@
+Fotos do site. Os arquivos .jpg desta pasta sao GERADOS a partir de ../../fotos-originais/
+(4:3, 1200x900, leves). Para trocar uma foto: substitua a original em fotos-originais/ e rode
+  node scripts/otimizar-imagens.js
