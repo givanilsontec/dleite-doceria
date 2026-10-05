@@ -57,6 +57,10 @@ create table if not exists pedidos (
 );
 alter table pedidos add column if not exists taxa_entrega numeric(10,2);
 alter table pedidos add column if not exists chave_idempotencia text unique;
+-- Quando o status mudou pela última vez (entregues/cancelados saem do painel 24 h depois).
+alter table pedidos add column if not exists atualizado_em timestamptz not null default now();
+-- true = nome, telefone e endereço já foram apagados (feito sozinho 15 dias após o pedido).
+alter table pedidos add column if not exists dados_removidos boolean not null default false;
 alter table pedidos add column if not exists tipo_entrega text not null default 'entrega'
   check (tipo_entrega in ('entrega','retirada'));
 alter table pedidos alter column endereco_rua drop not null;

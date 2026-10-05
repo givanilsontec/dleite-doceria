@@ -323,10 +323,10 @@ function renderPedidos({ el, aoExpirar }) {
     </article>`;
   }
 
-  // "Todos" primeiro; depois cada status na ordem do fluxo do pedido (Novo → ... → Entregue → Cancelado).
-  // Em "Todos", os pedidos em andamento vêm primeiro e os entregues/cancelados ficam no fim.
+  // "Todos em aberto" primeiro; depois cada status na ordem do fluxo do pedido (Novo → ... → Entregue → Cancelado).
+  // Entregues e cancelados só aparecem nos filtros deles, e só por 24 horas (depois o servidor nem envia).
   const FILTROS = [
-    { valor: 'todos', rotulo: 'Todos', teste: () => true },
+    { valor: 'todos', rotulo: 'Todos em aberto', teste: (p) => !STATUS_FINAIS.includes(p.status) },
     ...STATUS.map((s) => ({ valor: s.valor, rotulo: s.rotulo, teste: (p) => p.status === s.valor })),
   ];
 
@@ -351,8 +351,8 @@ function renderPedidos({ el, aoExpirar }) {
     grade.innerHTML = visiveis.length
       ? visiveis.map(cardHTML).join('')
       : estadoHTML({
-        titulo: filtro === 'todos' ? 'Nenhum pedido ainda' : `Nenhum pedido em "${esc(atual.rotulo)}"`,
-        texto: 'Os pedidos novos aparecem aqui sozinhos.',
+        titulo: filtro === 'todos' ? 'Nenhum pedido em aberto' : `Nenhum pedido em "${esc(atual.rotulo)}"`,
+        texto: STATUS_FINAIS.includes(filtro) ? 'Aparecem aqui só os das últimas 24 horas.' : 'Os pedidos novos aparecem aqui sozinhos.',
         categoria: 'brownie',
       });
     atualizarAvisoNovos();

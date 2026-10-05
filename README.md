@@ -32,7 +32,7 @@ O objetivo foi dar à doceria um cardápio com preços sempre atualizados, um pe
 
 - **O preço é sempre calculado no servidor.** O navegador envia só ids, sabor e quantidade. Preço por sabor, promoção e total vêm do banco, então mexer no site não muda o valor cobrado. Cada item guarda o preço do momento do pedido.
 - **Sem conta de cliente, de propósito.** Cadastro aumenta o abandono e obrigaria a guardar mais dados pessoais. O WhatsApp já identifica o cliente.
-- **Dados pessoais só no painel.** Não existe consulta pública de pedido por código. A tela de confirmação usa o pedido guardado apenas na aba de quem comprou. Pedidos de retirada não guardam endereço.
+- **Dados pessoais só no painel, e por pouco tempo.** Não existe consulta pública de pedido por código. A tela de confirmação usa o pedido guardado apenas na aba de quem comprou. Pedidos de retirada não guardam endereço. Entregues e cancelados saem do painel após 24 horas, e **15 dias depois do pedido o servidor apaga sozinho nome, telefone e endereço** (fica só o que foi vendido e o valor). No aparelho do cliente, os dados só ficam salvos se ele marcar "Lembrar meus dados".
 - **Pedido duplicado evitado** com `Idempotency-Key`: se a rede cai depois de gravar, o reenvio devolve o mesmo pedido.
 - **Front-end sem framework e sem build.** Módulos ES nativos, servidos direto pelo Express. A página é leve no celular e fácil de manter por uma pessoa só.
 - **Regras de negócio puras e testadas.** Validação, preços, promoções, taxa e horário de funcionamento ficam em funções sem banco (`src/lib`), cobertas por testes.

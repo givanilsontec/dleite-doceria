@@ -146,13 +146,17 @@ router.post('/', async (req, res, next) => {
 // ---------- Consultar ----------
 
 // GET /pedidos?status=xxx  (painel)
+// Mostra os pedidos em aberto e só os entregues/cancelados das últimas 24 horas:
+// depois disso o pedido sai da tela (continua no banco para histórico).
+const VISIVEL_NO_PAINEL = `(status not in ('entregue', 'cancelado') or atualizado_em > now() - interval '24 hours')`;
+
 router.get('/', exigirPainel, async (req, res, next) => {
   try {
     const { status } = req.query;
     if (status !== undefined && !STATUS.includes(status)) throw new ErroValidacao('Status inválido.');
     const { rows } = status
-      ? await db.query(`select ${COLUNAS} from pedidos where status = $1 order by criado_em desc limit 300`, [status])
-      : await db.query(`select ${COLUNAS} from pedidos order by criado_em desc limit 300`);
+      ? await db.query(`select ${COLUNAS} from pedidos where status = $1 and ${VISIVEL_NO_PAINEL} order by criado_em desc limit 300`, [status])
+      : await db.query(`select ${COLUNAS} from pedidos where ${VISIVEL_NO_PAINEL} order by criado_em desc limit 300`);
     res.json(await comItens(rows));
   } catch (erro) {
     next(erro);
@@ -166,7 +170,7 @@ router.patch('/:id/status', exigirPainel, async (req, res, next) => {
     const status = req.body?.status;
     if (!UUID.test(id)) return res.status(404).json({ erro: 'Pedido não encontrado.' });
     if (!STATUS.includes(status)) throw new ErroValidacao('Status inválido.');
-    const { rows } = await db.query(`update pedidos set status = $1 where id = $2 returning ${COLUNAS}`, [status, id]);
+    const { rows } = await db.query(`update pedidos set status = $1, atualizado_em = now() where id = $2 returning ${COLUNAS}`, [status, id]);
     if (!rows.length) return res.status(404).json({ erro: 'Pedido não encontrado.' });
     const [pedido] = await comItens(rows);
     res.json(pedido);

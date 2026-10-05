@@ -23,3 +23,11 @@ export function gravarLocal(chave, valor) {
     // Armazenamento indisponível: segue sem salvar.
   }
 }
+
+export function removerLocal(chave) {
+  try {
+    localStorage.removeItem(chave);
+  } catch {
+    // Armazenamento indisponível: nada a remover.
+  }
+}

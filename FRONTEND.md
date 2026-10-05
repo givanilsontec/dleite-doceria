@@ -53,10 +53,11 @@ Preços, sabores, promoções, horário e entrega/retirada **não ficam no códi
 5. **Confirmação**: código do pedido e resumo; o WhatsApp da doceria abre sozinho com o pedido escrito.
 
 A confirmação usa o pedido guardado **só na aba** de quem comprou (sessionStorage). Não existe consulta pública de pedido.
+Nome, WhatsApp e endereço só ficam salvos no aparelho se o cliente marcar "Lembrar meus dados neste aparelho" (vem desmarcado).
 
 ## Painel da cozinha
 
-- **Pedidos**: atualiza a cada 15 s e na hora em que o painel volta a ficar visível. Pedido "Novo" aparece com faixa de destaque, contador no título da aba e aviso rápido (sem som, por enquanto). Fluxo: Novo → Confirmado → Em produção → Pronto → Saiu para entrega → Entregue (retirada: Pronto → "Cliente retirou"); Cancelar com confirmação. Ao mudar o status, abre o WhatsApp do cliente com a mensagem pronta (dá para desligar).
+- **Pedidos**: "Todos em aberto" mostra o que está em andamento; entregues e cancelados ficam nos filtros deles por 24 h e depois saem da tela. Atualiza a cada 15 s e na hora em que o painel volta a ficar visível. Pedido "Novo" aparece com faixa de destaque, contador no título da aba e aviso rápido (sem som, por enquanto). Fluxo: Novo → Confirmado → Em produção → Pronto → Saiu para entrega → Entregue (retirada: Pronto → "Cliente retirou"); Cancelar com confirmação. Ao mudar o status, abre o WhatsApp do cliente com a mensagem pronta (dá para desligar).
 - **Login**: senha única do casal; "Manter conectado neste aparelho" guarda o acesso por 7 dias (sem marcar, vale até fechar a aba). Trocar a senha desconecta todos.
 - **Cardápio**: preço, nome, descrição, preço por sabor, sabor esgotado, produto fora do cardápio, promoção "leve N por R$ X", produto novo.
 - **Loja e horário**: pausar pedidos com mensagem, horário por dia (fuso de Recife), entrega/retirada e endereço de retirada.
@@ -109,3 +110,4 @@ Pagamentos: `pix`, `cartao_entrega`, `dinheiro`.
 - Entrega exige rua e bairro; retirada tem taxa 0.
 - `preco_unitario` e `adicionais` do item são gravados no momento do pedido (mudar o preço depois não altera pedidos antigos).
 - `total` = soma das linhas − descontos de promoção + taxa de entrega.
+- 15 dias após o pedido, nome, telefone, endereço e observações são apagados (`src/lib/limpeza.js`, roda ao iniciar e a cada 6 h). Registros de acesso ao painel seguem o mesmo prazo.
