@@ -5,6 +5,7 @@ const { exigirPainel, senhaCorreta, trocarSenha, gerarToken, SENHA_MINIMA } = re
 const { UUID, validarProduto, ErroValidacao } = require('../lib/regras');
 const { estadoLoja, validarConfigLoja } = require('../lib/loja');
 const { lerConfigLoja, gravarConfigLoja } = require('./loja');
+const { PERIODOS, resumoVendas } = require('../lib/vendas');
 
 const router = express.Router();
 router.use(exigirPainel);
@@ -43,6 +44,26 @@ router.post('/senha', async (req, res, next) => {
     if (nova === atual) throw new ErroValidacao('A nova senha precisa ser diferente da atual.');
     await trocarSenha(nova);
     res.json({ token: await gerarToken({ lembrar: lembrar === true }) });
+  } catch (erro) {
+    next(erro);
+  }
+});
+
+// GET /painel/vendas?dias=7|30|90  -> resumo de vendas (faturamento por dia e por produto)
+router.get('/vendas', async (req, res, next) => {
+  try {
+    const dias = PERIODOS.includes(Number(req.query.dias)) ? Number(req.query.dias) : 30;
+    // Busca um dia a mais por segurança de fuso; o resumo corta no período exato (horário de Recife).
+    const { rows } = await db.query(
+      `select p.status, p.criado_em, p.taxa_entrega,
+         coalesce(json_agg(json_build_object('nome', i.nome, 'quantidade', i.quantidade,
+           'preco_unitario', i.preco_unitario, 'desconto', i.desconto)) filter (where i.id is not null), '[]') as itens
+       from pedidos p left join itens_pedido i on i.pedido_id = p.id
+       where p.criado_em > now() - make_interval(days => $1)
+       group by p.id`,
+      [dias + 1],
+    );
+    res.json(resumoVendas(rows, { dias }));
   } catch (erro) {
     next(erro);
   }

@@ -861,3 +861,87 @@ body.modal-aberto { overflow: hidden; }
 .login-logo { width: 112px; height: 112px; border-radius: 50%; object-fit: cover; box-shadow: var(--sombra-2); }
 .login-nome { margin: 14px 0 0; font-family: var(--fonte-titulo); font-weight: 700; font-size: 22px; color: var(--caramelo-forte); }
 .login-slogan { margin: 2px 0 0; font-size: 14px; color: var(--cacau-70); letter-spacing: 0.04em; }
+
+/* No computador há espaço: os filtros do painel quebram linha em vez de rolar
+   (assim o último nunca fica cortado na borda). No celular continua a fileira de arrastar. */
+@media (min-width: 721px) {
+  .painel .chips { flex-wrap: wrap; overflow: visible; margin: 0 0 18px; padding: 2px 0; }
+  .painel .chip { padding: 0 13px; }
+}
+
+/* ---------- Vendas (painel) ---------- */
+/* Cores dos doces no gráfico: paleta categórica validada (ordem fixa, nunca reciclada). */
+.vendas {
+  --serie-1: #2a78d6;
+  --serie-2: #eb6834;
+  --serie-3: #1baf7a;
+  --serie-4: #eda100;
+  --serie-5: #e87ba4;
+  --serie-outros: #a3a29b;
+  --superficie-grafico: var(--massa);
+  padding-bottom: 40px;
+}
+.serie-1 { --cor: var(--serie-1); }
+.serie-2 { --cor: var(--serie-2); }
+.serie-3 { --cor: var(--serie-3); }
+.serie-4 { --cor: var(--serie-4); }
+.serie-5 { --cor: var(--serie-5); }
+.serie-outros { --cor: var(--serie-outros); }
+
+.cartoes-vendas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+@media (max-width: 900px) { .cartoes-vendas { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.cartao-venda { padding: 14px 16px; border-radius: var(--raio-lg); background: var(--massa); border: 1px solid var(--borda-card); min-width: 0; }
+.cartao-venda.destaque { border-color: var(--caramelo-forte); }
+.cartao-venda-rotulo { margin: 0; font-size: 13px; color: var(--cacau-70); }
+.cartao-venda-valor { margin: 4px 0 2px; font-family: var(--fonte-titulo); font-weight: 700; font-size: 24px; color: var(--cacau); }
+.cartao-venda-sub { margin: 0; font-size: 13px; color: var(--cacau-70); }
+
+.graficos-vendas { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; margin-bottom: 16px; }
+@media (max-width: 900px) { .graficos-vendas { grid-template-columns: minmax(0, 1fr); } }
+.grafico-cartao { min-width: 0; }
+
+/* linha */
+.linha-caixa { position: relative; width: 100%; }
+.grafico-linha { display: block; width: 100%; height: auto; touch-action: pan-y; outline: none; }
+.grafico-linha:focus-visible { box-shadow: 0 0 0 3px rgba(198, 139, 89, 0.4); border-radius: 8px; }
+.grafico-linha .grade { stroke: var(--cacau-10); stroke-width: 1; }
+.grafico-linha .eixo { stroke: var(--cacau-18); stroke-width: 1; }
+.grafico-linha .rotulo-eixo { fill: var(--cacau-70); font-size: 12px; font-variant-numeric: tabular-nums; }
+.grafico-linha .linha { fill: none; stroke: var(--caramelo-forte); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.grafico-linha .ponto-destaque { fill: var(--caramelo-forte); stroke: var(--superficie-grafico); stroke-width: 2; }
+.grafico-linha .rotulo-destaque { fill: var(--cacau); font-size: 12px; font-weight: 700; }
+.grafico-linha .mira { stroke: var(--cacau-50); stroke-width: 1; stroke-dasharray: 3 3; }
+.grafico-linha .ponto-mira { fill: var(--caramelo-forte); stroke: var(--superficie-grafico); stroke-width: 2; }
+.grafico-linha .area-toque { fill: transparent; cursor: crosshair; }
+.linha-tooltip {
+  position: absolute; top: 0; z-index: 2; pointer-events: none;
+  display: flex; flex-direction: column; gap: 1px; padding: 8px 10px; border-radius: var(--raio-md);
+  background: var(--cacau); color: var(--creme); font-size: 13px; box-shadow: var(--sombra-2); white-space: nowrap;
+}
+.linha-tooltip .tooltip-sub { opacity: 0.8; }
+
+/* rosca */
+.rosca-area { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.rosca-svg { width: 180px; max-width: 100%; flex-shrink: 0; }
+.rosca { display: block; width: 100%; height: auto; }
+.rosca .fatia { fill: var(--cor); stroke: var(--superficie-grafico); stroke-width: 2; transition: opacity 0.15s; outline: none; }
+.rosca .fatia.apagada { opacity: 0.3; }
+.rosca .fatia:focus-visible { stroke: var(--cacau); }
+.rosca-total { fill: var(--cacau); font-family: var(--fonte-titulo); font-weight: 700; font-size: 30px; }
+.rosca-sub { fill: var(--cacau-70); font-size: 13px; }
+.legenda { flex: 1; min-width: 180px; margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.legenda li { display: grid; grid-template-columns: 12px 1fr; column-gap: 10px; row-gap: 1px; align-items: center; padding: 6px 8px; border-radius: var(--raio-md); }
+.legenda li.ativa { background: var(--casca); }
+.legenda-cor { width: 12px; height: 12px; border-radius: 3px; background: var(--cor); }
+.legenda-nome { font-weight: 600; color: var(--cacau); }
+.legenda-sub { grid-column: 2; font-size: 13px; color: var(--cacau-70); font-variant-numeric: tabular-nums; }
+.legenda-sub strong { color: var(--cacau); font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .rosca .fatia { transition: none; } }
+
+/* tabela */
+.tabela-vendas summary { cursor: pointer; font-family: var(--fonte-titulo); font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+.subtitulo-tabela { margin: 14px 0 6px; font-size: 15px; }
+.tabela-vendas table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.tabela-vendas th, .tabela-vendas td { padding: 8px 6px; text-align: left; border-bottom: 1px solid var(--cacau-10); }
+.tabela-vendas th:not(:first-child), .tabela-vendas td:not(:first-child) { text-align: right; }
+.tabela-vendas th { color: var(--cacau-70); font-weight: 600; }
