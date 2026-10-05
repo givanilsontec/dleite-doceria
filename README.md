@@ -26,13 +26,14 @@ O objetivo foi dar à doceria um cardápio com preços sempre atualizados, um pe
 - **Aviso ao cliente em um toque**: ao mudar o status, o WhatsApp do cliente abre com a mensagem certa ("seu pedido foi aceito", "saiu para entrega"...), com saudação conforme o horário.
 - **Gestão do cardápio**: preços, preço por sabor, sabor ou produto esgotado, promoções e produtos novos, sem mexer no código.
 - **Loja e horário**: pausar pedidos com mensagem, horário de funcionamento por dia (fuso de Recife), entrega e retirada.
+- **Vendas**: faturamento de hoje, do período (7, 30 ou 90 dias), média por dia e melhor dia; gráfico de linha do faturamento dia a dia e rosca do que foi vendido, com tabela para conferir.
 - **Acesso protegido**: senha do casal, troca de senha pelo próprio painel, "manter conectado neste aparelho" e aviso do último acesso (data e IP).
 
 ## Decisões técnicas
 
 - **O preço é sempre calculado no servidor.** O navegador envia só ids, sabor e quantidade. Preço por sabor, promoção e total vêm do banco, então mexer no site não muda o valor cobrado. Cada item guarda o preço do momento do pedido.
 - **Sem conta de cliente, de propósito.** Cadastro aumenta o abandono e obrigaria a guardar mais dados pessoais. O WhatsApp já identifica o cliente.
-- **Dados pessoais só no painel.** Não existe consulta pública de pedido por código. A tela de confirmação usa o pedido guardado apenas na aba de quem comprou. Pedidos de retirada não guardam endereço.
+- **Dados pessoais só no painel, e por pouco tempo.** Não existe consulta pública de pedido por código. A tela de confirmação usa o pedido guardado apenas na aba de quem comprou. Pedidos de retirada não guardam endereço. Entregues e cancelados saem do painel após 24 horas, e **15 dias depois do pedido o servidor apaga sozinho nome, telefone e endereço** (fica só o que foi vendido e o valor). No aparelho do cliente, os dados só ficam salvos se ele marcar "Lembrar meus dados".
 - **Pedido duplicado evitado** com `Idempotency-Key`: se a rede cai depois de gravar, o reenvio devolve o mesmo pedido.
 - **Front-end sem framework e sem build.** Módulos ES nativos, servidos direto pelo Express. A página é leve no celular e fácil de manter por uma pessoa só.
 - **Regras de negócio puras e testadas.** Validação, preços, promoções, taxa e horário de funcionamento ficam em funções sem banco (`src/lib`), cobertas por testes.
@@ -106,6 +107,8 @@ src/
 ├── middleware/auth.js     → senha do painel (scrypt), token assinado, registro de acessos
 ├── lib/regras.js          → validação, preço por sabor, promoção, taxa e total (puro, testado)
 ├── lib/loja.js            → pausa, horário por dia, entrega/retirada (puro, testado)
+├── lib/vendas.js          → resumo de vendas por dia (fuso de Recife) e por doce (puro, testado)
+├── lib/limpeza.js         → apaga dados pessoais de pedidos com mais de 15 dias
 └── routes/
     ├── produtos.js        → GET /produtos
     ├── taxas.js           → GET /taxas-entrega
@@ -132,6 +135,7 @@ tests/regras.test.js
 | `PATCH /pedidos/:id/status` | token | Muda o status |
 | `GET/POST/PATCH /painel/produtos` | token | Gestão do cardápio |
 | `GET/PATCH /painel/loja` | token | Pausa, horário, entrega/retirada |
+| `GET /painel/vendas?dias=7\|30\|90` | token | Resumo de vendas (por dia e por doce) |
 
 `GET /admin` redireciona para a tela de senha do painel. Formatos de envio e resposta em [`FRONTEND.md`](FRONTEND.md).
 
@@ -139,5 +143,4 @@ tests/regras.test.js
 
 - Notificação no celular para pedidos novos (hoje o painel atualiza a cada 15 s e destaca pedidos novos).
 - Envio de fotos de produtos pelo painel.
-- Resumo de vendas (dia, semana e mês) e mais vendidos.
 - Cupons de desconto.

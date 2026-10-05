@@ -138,3 +138,27 @@ test('entrega exige bairro; retirada não', () => {
   assert.throws(() => validarPedido({ ...base(), endereco_bairro: '  ' }), ErroValidacao);
   assert.strictEqual(validarPedido({ ...base(), tipo_entrega: 'retirada', endereco_bairro: '' }).endereco_bairro, null);
 });
+
+test('resumo de vendas: soma por dia no fuso de Recife e por produto, ignorando novos e cancelados', () => {
+  const { resumoVendas } = require('../src/lib/vendas');
+  const agora = new Date('2026-10-05T15:00:00Z'); // 12:00 em Recife, segunda
+  const item = (nome, quantidade, preco, desconto = 0) => ({ nome, quantidade, preco_unitario: preco, desconto });
+  const pedidos = [
+    { status: 'entregue', criado_em: '2026-10-05T13:00:00Z', taxa_entrega: 0, itens: [item('Pudim', 2, 7, 2)] }, // 12
+    { status: 'confirmado', criado_em: '2026-10-05T14:00:00Z', taxa_entrega: 0, itens: [item('Brownie', 1, 5)] }, // 5
+    { status: 'recebido', criado_em: '2026-10-05T14:30:00Z', taxa_entrega: 0, itens: [item('Brownie', 9, 5)] }, // não conta
+    { status: 'cancelado', criado_em: '2026-10-04T14:30:00Z', taxa_entrega: 0, itens: [item('Pudim', 9, 7)] }, // não conta
+    // 02:00 UTC do dia 05 = 23:00 do dia 04 em Recife
+    { status: 'entregue', criado_em: '2026-10-05T02:00:00Z', taxa_entrega: 0, itens: [item('Bolo no Pote', 3, 8)] }, // 24
+    { status: 'entregue', criado_em: '2026-09-01T12:00:00Z', taxa_entrega: 0, itens: [item('Pudim', 1, 7)] }, // fora do período
+  ];
+  const r = resumoVendas(pedidos, { dias: 7, agora });
+  assert.strictEqual(r.por_dia.length, 7);
+  assert.strictEqual(r.por_dia[6].dia, '2026-10-05');
+  assert.deepStrictEqual(r.hoje, { faturamento: 17, pedidos: 2 });
+  assert.strictEqual(r.por_dia[5].faturamento, 24); // dia 04 em Recife
+  assert.strictEqual(r.periodo.faturamento, 41);
+  assert.strictEqual(r.periodo.pedidos, 3);
+  assert.deepStrictEqual(r.periodo.melhor_dia, { dia: '2026-10-04', faturamento: 24 });
+  assert.deepStrictEqual(r.por_produto.map((p) => [p.nome, p.quantidade]), [['Bolo no Pote', 3], ['Brownie', 1], ['Pudim', 2]]);
+});

@@ -30,7 +30,8 @@ public/
         ├── pedido.js          /#/pedido/AT-123456   (confirmação + WhatsApp)
         ├── painel.js          /#/painel             (pedidos, status, senha)
         ├── painel-cardapio.js /#/painel/cardapio    (preços, esgotados, produtos novos)
-        └── painel-loja.js     /#/painel/loja        (pausar pedidos, horário, entrega/retirada)
+        ├── painel-loja.js     /#/painel/loja        (pausar pedidos, horário, entrega/retirada)
+        └── painel-vendas.js   /#/painel/vendas      (resumo de vendas: cartões, linha e rosca em SVG)
 ```
 
 ## Ajustes (`public/js/config.js`)
@@ -53,12 +54,14 @@ Preços, sabores, promoções, horário e entrega/retirada **não ficam no códi
 5. **Confirmação**: código do pedido e resumo; o WhatsApp da doceria abre sozinho com o pedido escrito.
 
 A confirmação usa o pedido guardado **só na aba** de quem comprou (sessionStorage). Não existe consulta pública de pedido.
+Nome, WhatsApp e endereço só ficam salvos no aparelho se o cliente marcar "Lembrar meus dados neste aparelho" (vem desmarcado).
 
 ## Painel da cozinha
 
-- **Pedidos**: atualiza a cada 15 s e na hora em que o painel volta a ficar visível. Pedido "Novo" aparece com faixa de destaque, contador no título da aba e aviso rápido (sem som, por enquanto). Fluxo: Novo → Confirmado → Em produção → Pronto → Saiu para entrega → Entregue (retirada: Pronto → "Cliente retirou"); Cancelar com confirmação. Ao mudar o status, abre o WhatsApp do cliente com a mensagem pronta (dá para desligar).
+- **Pedidos**: "Todos em aberto" mostra o que está em andamento; entregues e cancelados ficam nos filtros deles por 24 h e depois saem da tela. Atualiza a cada 15 s e na hora em que o painel volta a ficar visível. Pedido "Novo" aparece com faixa de destaque, contador no título da aba e aviso rápido (sem som, por enquanto). Fluxo: Novo → Confirmado → Em produção → Pronto → Saiu para entrega → Entregue (retirada: Pronto → "Cliente retirou"); Cancelar com confirmação. Ao mudar o status, abre o WhatsApp do cliente com a mensagem pronta (dá para desligar).
 - **Login**: senha única do casal; "Manter conectado neste aparelho" guarda o acesso por 7 dias (sem marcar, vale até fechar a aba). Trocar a senha desconecta todos.
 - **Cardápio**: preço, nome, descrição, preço por sabor, sabor esgotado, produto fora do cardápio, promoção "leve N por R$ X", produto novo.
+- **Vendas**: cartões (hoje, período, média por dia, melhor dia), linha do faturamento dia a dia com marcador ao tocar/passar o mouse, rosca do que foi vendido com legenda (unidades, % e R$) e "Ver em tabela". Conta pedidos confirmados em diante (novos e cancelados ficam de fora). Gráficos em SVG próprio: a CSP não permite bibliotecas de fora.
 - **Loja e horário**: pausar pedidos com mensagem, horário por dia (fuso de Recife), entrega/retirada e endereço de retirada.
 
 ## Contrato da API
@@ -75,6 +78,7 @@ A confirmação usa o pedido guardado **só na aba** de quem comprou (sessionSto
 | `PATCH /pedidos/:id/status` | token | `{ status }` | pedido atualizado |
 | `GET /painel/produtos` / `POST` / `PATCH /painel/produtos/:id` | token | produto | produto |
 | `GET` / `PATCH /painel/loja` | token | campos da configuração | `{ config, estado }` |
+| `GET /painel/vendas?dias=7\|30\|90` | token | | `{ hoje, periodo, por_dia, por_produto }` |
 
 Token = `Authorization: Bearer <token>`. Erros sempre em JSON: `{ "erro": "mensagem" }`.
 
@@ -109,3 +113,4 @@ Pagamentos: `pix`, `cartao_entrega`, `dinheiro`.
 - Entrega exige rua e bairro; retirada tem taxa 0.
 - `preco_unitario` e `adicionais` do item são gravados no momento do pedido (mudar o preço depois não altera pedidos antigos).
 - `total` = soma das linhas − descontos de promoção + taxa de entrega.
+- 15 dias após o pedido, nome, telefone, endereço e observações são apagados (`src/lib/limpeza.js`, roda ao iniciar e a cada 6 h). Registros de acesso ao painel seguem o mesmo prazo.

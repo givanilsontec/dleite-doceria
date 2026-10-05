@@ -1,6 +1,6 @@
 import { criarPedido, listarTaxasEntrega, listarProdutos, buscarLoja } from '../api.js';
 import { carrinho } from '../cart.js';
-import { CHAVES, lerLocal, gravarLocal } from '../storage.js';
+import { CHAVES, lerLocal, gravarLocal, removerLocal } from '../storage.js';
 import {
   esc, dinheiro, icone, apenasDigitos, formatarTelefone, PAGAMENTOS, metaItemHTML, estadoHTML, carregandoHTML,
 } from '../ui.js';
@@ -178,10 +178,13 @@ export function render({ el, navegar }) {
             <div data-totais aria-live="polite"></div>
           </section>
 
+          <label class="opcao-avisar">
+            <input type="checkbox" name="lembrar_dados" ${salvo.cliente_nome ? 'checked' : ''}>
+            Lembrar meus dados neste aparelho para o próximo pedido
+          </label>
           <button type="submit" class="botao botao-primario botao-bloco" data-enviar ${loja.aberta === false ? 'disabled' : ''}>
             ${loja.aberta === false ? 'Loja fechada no momento' : 'Confirmar pedido'}
           </button>
-          <p class="campo-dica centro">Seus dados ficam salvos neste aparelho para o próximo pedido.</p>
         </form>
       </div>`;
 
@@ -340,7 +343,9 @@ export function render({ el, navegar }) {
 
       try {
         const pedido = await criarPedido(dados, chaveEnvio);
-        gravarLocal(CHAVES.cliente, cliente);
+        // Só fica salvo no aparelho se o cliente marcou "Lembrar meus dados"; senão, apaga o que havia.
+        if (form.elements.lembrar_dados.checked) gravarLocal(CHAVES.cliente, cliente);
+        else removerLocal(CHAVES.cliente);
         carrinho.limpar();
         if (ativo) navegar(`/pedido/${encodeURIComponent(pedido.codigo)}?novo=1`);
       } catch (erro) {

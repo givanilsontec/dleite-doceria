@@ -215,6 +215,7 @@ function renderCardapio({ el, aoExpirar }) {
         <div class="painel-topo-acoes">
           <a class="botao botao-secundario botao-pequeno" href="#/painel">Pedidos</a>
           <a class="botao botao-secundario botao-pequeno" href="#/painel/loja">Loja e horário</a>
+          <a class="botao botao-secundario botao-pequeno" href="#/painel/vendas">Vendas</a>
           <button type="button" class="botao botao-fantasma botao-pequeno" data-acao="senha">Senha</button>
           <button type="button" class="botao botao-fantasma botao-pequeno" data-acao="sair">Sair</button>
           <a class="botao botao-fantasma botao-pequeno" href="#/">${icone('loja')} Ver loja</a>

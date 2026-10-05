@@ -13,6 +13,7 @@ import * as pedido from './pages/pedido.js';
 import * as painel from './pages/painel.js';
 import * as painelCardapio from './pages/painel-cardapio.js';
 import * as painelLoja from './pages/painel-loja.js';
+import * as painelVendas from './pages/painel-vendas.js';
 
 const ROTAS = [
   { padrao: /^\/$/, pagina: cardapio, aba: 'cardapio', titulo: 'Cardápio' },
@@ -20,6 +21,7 @@ const ROTAS = [
   { padrao: /^\/checkout$/, pagina: checkout, aba: 'carrinho', titulo: 'Entrega e pagamento' },
   { padrao: /^\/pedido\/([^/]+)$/, pagina: pedido, aba: null, titulo: 'Seu pedido' },
   // Área interna: não aparece no menu do cliente. O login (senha) é feito dentro da própria tela.
+  { padrao: /^\/painel\/vendas$/, pagina: painelVendas, aba: null, titulo: 'Vendas', interno: true },
   { padrao: /^\/painel\/loja$/, pagina: painelLoja, aba: null, titulo: 'Loja e horário', interno: true },
   { padrao: /^\/painel\/cardapio$/, pagina: painelCardapio, aba: null, titulo: 'Cardápio do painel', interno: true },
   { padrao: /^\/painel$/, pagina: painel, aba: null, titulo: 'Painel da cozinha', interno: true },

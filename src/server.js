@@ -10,6 +10,8 @@ const taxas = require('./routes/taxas');
 const pedidos = require('./routes/pedidos');
 const painel = require('./routes/painel');
 const { router: loja } = require('./routes/loja');
+const db = require('./config/db');
+const { agendarLimpeza } = require('./lib/limpeza');
 
 const app = express();
 
@@ -105,6 +107,7 @@ app.use((erro, req, res, next) => {
 if (require.main === module) {
   const porta = process.env.PORT || 3000;
   app.listen(porta, () => console.log(`D'Leite em http://localhost:${porta}`));
+  agendarLimpeza(db); // apaga dados pessoais de pedidos com mais de 15 dias
 }
 
 module.exports = app;

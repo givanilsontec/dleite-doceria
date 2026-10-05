@@ -255,3 +255,8 @@ export function lerLojaPainel() {
 export function salvarLojaPainel(campos) {
   return request('/painel/loja', { method: 'PATCH', headers: cabecalhoPainel(), body: JSON.stringify(campos) });
 }
+
+// GET /painel/vendas?dias=7|30|90  -> resumo de vendas
+export function lerVendasPainel(dias = 30) {
+  return request(`/painel/vendas?dias=${encodeURIComponent(dias)}`, { headers: cabecalhoPainel() });
+}
