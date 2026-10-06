@@ -84,6 +84,7 @@ export function render({ el }) {
       </section>
       <div class="chips" data-chips role="group" aria-label="Filtrar por categoria"></div>
       <div class="grade-produtos" data-grade aria-busy="true">${esqueletos(4)}</div>
+      <p class="credito">Desenvolvido por Givanilson de Souza</p>
     </div>`;
 
   const carrosseis = ligarCarrosseis(el);

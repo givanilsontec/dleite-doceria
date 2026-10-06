@@ -260,3 +260,17 @@ export function salvarLojaPainel(campos) {
 export function lerVendasPainel(dias = 30) {
   return request(`/painel/vendas?dias=${encodeURIComponent(dias)}`, { headers: cabecalhoPainel() });
 }
+
+// PUT /painel/produtos/:id/foto  (o corpo é o próprio arquivo da foto)
+export function enviarFotoPainel(id, arquivo) {
+  return request(`/painel/produtos/${encodeURIComponent(id)}/foto`, {
+    method: 'PUT',
+    headers: { ...cabecalhoPainel(), 'Content-Type': arquivo.type },
+    body: arquivo,
+  });
+}
+
+// DELETE /painel/produtos/:id/foto
+export function removerFotoPainel(id) {
+  return request(`/painel/produtos/${encodeURIComponent(id)}/foto`, { method: 'DELETE', headers: cabecalhoPainel() });
+}

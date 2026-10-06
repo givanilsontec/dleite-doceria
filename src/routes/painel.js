@@ -6,12 +6,13 @@ const { UUID, validarProduto, ErroValidacao } = require('../lib/regras');
 const { estadoLoja, validarConfigLoja } = require('../lib/loja');
 const { lerConfigLoja, gravarConfigLoja } = require('./loja');
 const { PERIODOS, resumoVendas } = require('../lib/vendas');
+const { TIPOS_ACEITOS, MAX_BYTES, prepararFoto } = require('../lib/fotos');
 
 const router = express.Router();
 router.use(exigirPainel);
 
 const COLUNAS = `id, nome, descricao, preco, categoria, disponivel, sabores, sabores_esgotados,
-  precos_sabor, promo_qtd, promo_preco, imagem_url`;
+  precos_sabor, promo_qtd, promo_preco, imagem_url, galeria`;
 
 // Banco -> formato do painel: sabores viram [{ nome, preco, esgotado }].
 function formatar(p) {
@@ -31,6 +32,8 @@ function formatar(p) {
     promo_qtd: p.promo_qtd,
     promo_preco: p.promo_preco === null ? null : Number(p.promo_preco),
     imagem_url: p.imagem_url,
+    // foto que aparece no card: a principal, ou a primeira do carrossel
+    foto: p.imagem_url || (p.galeria || [])[0]?.url || null,
   };
 }
 
@@ -87,6 +90,87 @@ router.patch('/loja', async (req, res, next) => {
     res.json({ config, estado: estadoLoja(config) });
   } catch (erro) {
     next(erro);
+  }
+});
+
+// ---------- Foto do produto ----------
+// A foto fica no banco (o disco do servidor no Render grátis é apagado a cada atualização).
+const ehFotoDoPainel = (url) => typeof url === 'string' && /^imagens\/[0-9a-f-]{36}$/i.test(url);
+
+// Apaga do banco a foto antiga que não é mais usada (só as enviadas pelo painel; as do projeto ficam).
+async function apagarFotoAntiga(cliente, url) {
+  if (ehFotoDoPainel(url)) await cliente.query('delete from imagens where id = $1', [url.slice('imagens/'.length)]);
+}
+
+// Produto com carrossel (galeria): a foto principal é o primeiro slide; nos outros, a imagem_url.
+async function trocarFoto(cliente, produto, novaUrl) {
+  const galeria = Array.isArray(produto.galeria) ? produto.galeria : [];
+  if (galeria.length > 1) {
+    const antiga = galeria[0].url;
+    const nova = novaUrl ? [{ ...galeria[0], url: novaUrl }, ...galeria.slice(1)] : galeria.slice(1);
+    await cliente.query('update produtos set galeria = $2::jsonb where id = $1', [produto.id, JSON.stringify(nova)]);
+    await apagarFotoAntiga(cliente, antiga);
+  } else {
+    await cliente.query('update produtos set imagem_url = $2 where id = $1', [produto.id, novaUrl]);
+    await apagarFotoAntiga(cliente, produto.imagem_url);
+  }
+}
+
+// PUT /painel/produtos/:id/foto  (corpo = a própria imagem, Content-Type image/jpeg|png|webp)
+router.put('/produtos/:id/foto', express.raw({ type: TIPOS_ACEITOS, limit: MAX_BYTES }), async (req, res, next) => {
+  let cliente;
+  try {
+    const { id } = req.params;
+    if (!UUID.test(id)) return res.status(404).json({ erro: 'Produto não encontrado.' });
+    if (!TIPOS_ACEITOS.includes(req.get('content-type'))) {
+      return res.status(415).json({ erro: 'Envie uma foto em JPG, PNG ou WEBP.' });
+    }
+    const jpg = await prepararFoto(req.body);
+
+    cliente = await db.connect();
+    await cliente.query('begin');
+    const atual = await cliente.query(`select ${COLUNAS} from produtos where id = $1 for update`, [id]);
+    if (!atual.rows.length) {
+      await cliente.query('rollback');
+      return res.status(404).json({ erro: 'Produto não encontrado.' });
+    }
+    const { rows } = await cliente.query("insert into imagens (dados, tipo) values ($1, 'image/jpeg') returning id", [jpg]);
+    await trocarFoto(cliente, atual.rows[0], `imagens/${rows[0].id}`);
+    await cliente.query('commit');
+
+    const novo = await db.query(`select ${COLUNAS} from produtos where id = $1`, [id]);
+    res.json(formatar(novo.rows[0]));
+  } catch (erro) {
+    if (cliente) await cliente.query('rollback').catch(() => {});
+    if (erro.type === 'entity.too.large') return res.status(413).json({ erro: 'A foto é grande demais (máximo 10 MB).' });
+    next(erro);
+  } finally {
+    if (cliente) cliente.release();
+  }
+});
+
+// DELETE /painel/produtos/:id/foto  -> volta para o desenho padrão (ou para o próximo slide do carrossel)
+router.delete('/produtos/:id/foto', async (req, res, next) => {
+  let cliente;
+  try {
+    const { id } = req.params;
+    if (!UUID.test(id)) return res.status(404).json({ erro: 'Produto não encontrado.' });
+    cliente = await db.connect();
+    await cliente.query('begin');
+    const atual = await cliente.query(`select ${COLUNAS} from produtos where id = $1 for update`, [id]);
+    if (!atual.rows.length) {
+      await cliente.query('rollback');
+      return res.status(404).json({ erro: 'Produto não encontrado.' });
+    }
+    await trocarFoto(cliente, atual.rows[0], null);
+    await cliente.query('commit');
+    const novo = await db.query(`select ${COLUNAS} from produtos where id = $1`, [id]);
+    res.json(formatar(novo.rows[0]));
+  } catch (erro) {
+    if (cliente) await cliente.query('rollback').catch(() => {});
+    next(erro);
+  } finally {
+    if (cliente) cliente.release();
   }
 });
 

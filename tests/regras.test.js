@@ -162,3 +162,19 @@ test('resumo de vendas: soma por dia no fuso de Recife e por produto, ignorando 
   assert.deepStrictEqual(r.periodo.melhor_dia, { dia: '2026-10-04', faturamento: 24 });
   assert.deepStrictEqual(r.por_produto.map((p) => [p.nome, p.quantidade]), [['Bolo no Pote', 3], ['Brownie', 1], ['Pudim', 2]]);
 });
+
+test('foto do painel: vira JPG 1200x900 com a imagem inteira; arquivo inválido é recusado', async () => {
+  const sharp = require('sharp');
+  const { prepararFoto, ErroFoto } = require('../src/lib/fotos');
+  // foto bem comprida (3:1) em PNG transparente
+  const png = await sharp({ create: { width: 1500, height: 500, channels: 4, background: { r: 120, g: 40, b: 60, alpha: 1 } } }).png().toBuffer();
+  const saida = await prepararFoto(png);
+  const info = await sharp(saida).metadata();
+  assert.strictEqual(info.format, 'jpeg');
+  assert.deepStrictEqual([info.width, info.height], [1200, 900]);
+  // foto inteira: o topo tem a margem creme (não foi cortada para preencher)
+  const { data } = await sharp(saida).extract({ left: 600, top: 5, width: 1, height: 1 }).raw().toBuffer({ resolveWithObject: true });
+  assert.ok(data[0] > 240 && data[1] > 240, 'margem creme no topo');
+  await assert.rejects(prepararFoto(Buffer.from('isto não é uma imagem')), ErroFoto);
+  await assert.rejects(prepararFoto(Buffer.alloc(0)), ErroFoto);
+});

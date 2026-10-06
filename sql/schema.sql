@@ -84,6 +84,14 @@ alter table itens_pedido add column if not exists sabor text;
 alter table itens_pedido add column if not exists adicionais jsonb not null default '[]';
 alter table itens_pedido add column if not exists desconto numeric(10,2) not null default 0;  -- desconto de promoção da linha
 
+-- Fotos enviadas pelo painel (o disco do servidor não é permanente no plano grátis).
+create table if not exists imagens (
+  id uuid primary key default gen_random_uuid(),
+  dados bytea not null,
+  tipo text not null default 'image/jpeg',
+  criado_em timestamptz not null default now()
+);
+
 -- Painel da cozinha: senha (criptografada) e registro de acessos.
 create table if not exists painel_config (
   chave text primary key,
@@ -109,6 +117,7 @@ alter table pedidos enable row level security;
 alter table itens_pedido enable row level security;
 alter table painel_config enable row level security;
 alter table painel_acessos enable row level security;
+alter table imagens enable row level security;
 
 -- As chaves públicas do Supabase (anon/authenticated) não precisam de nada: só o servidor acessa o banco.
 -- O RLS não bloqueia TRUNCATE, por isso as permissões também são retiradas.

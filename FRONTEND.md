@@ -60,7 +60,7 @@ Nome, WhatsApp e endereço só ficam salvos no aparelho se o cliente marcar "Lem
 
 - **Pedidos**: "Todos em aberto" mostra o que está em andamento; entregues e cancelados ficam nos filtros deles por 24 h e depois saem da tela. Atualiza a cada 15 s e na hora em que o painel volta a ficar visível. Pedido "Novo" aparece com faixa de destaque, contador no título da aba e aviso rápido (sem som, por enquanto). Fluxo: Novo → Confirmado → Em produção → Pronto → Saiu para entrega → Entregue (retirada: Pronto → "Cliente retirou"); Cancelar com confirmação. Ao mudar o status, abre o WhatsApp do cliente com a mensagem pronta (dá para desligar).
 - **Login**: senha única do casal; "Manter conectado neste aparelho" guarda o acesso por 7 dias (sem marcar, vale até fechar a aba). Trocar a senha desconecta todos.
-- **Cardápio**: preço, nome, descrição, preço por sabor, sabor esgotado, produto fora do cardápio, promoção "leve N por R$ X", produto novo.
+- **Cardápio**: foto do produto (escolher ou tirar pelo celular, prévia, trocar, remover; o servidor ajusta para 4:3 com a foto inteira e guarda no banco, porque o disco do Render grátis não é permanente), preço, nome, descrição, preço por sabor, sabor esgotado, produto fora do cardápio, promoção "leve N por R$ X", produto novo.
 - **Vendas**: cartões (hoje, período, média por dia, melhor dia), linha do faturamento dia a dia com marcador ao tocar/passar o mouse, rosca do que foi vendido com legenda (unidades, % e R$) e "Ver em tabela". Conta pedidos confirmados em diante (novos e cancelados ficam de fora). Gráficos em SVG próprio: a CSP não permite bibliotecas de fora.
 - **Loja e horário**: pausar pedidos com mensagem, horário por dia (fuso de Recife), entrega/retirada e endereço de retirada.
 

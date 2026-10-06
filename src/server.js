@@ -10,6 +10,7 @@ const taxas = require('./routes/taxas');
 const pedidos = require('./routes/pedidos');
 const painel = require('./routes/painel');
 const { router: loja } = require('./routes/loja');
+const imagens = require('./routes/imagens');
 const db = require('./config/db');
 const { agendarLimpeza } = require('./lib/limpeza');
 
@@ -28,7 +29,7 @@ app.use(helmet({
       scriptSrc: ["'self'"],
       styleSrc: ["'self'", 'https://fonts.googleapis.com'],
       fontSrc: ['https://fonts.gstatic.com'],
-      imgSrc: ["'self'", 'data:'],
+      imgSrc: ["'self'", 'data:', 'blob:'], // blob: = prévia da foto escolhida no painel
       connectSrc: ["'self'"],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
@@ -56,6 +57,7 @@ const limite = (janelaMin, max, erro, { contarFalhas = false } = {}) => rateLimi
 app.use('/produtos', produtos);
 app.use('/taxas-entrega', taxas);
 app.use('/loja', loja);
+app.use('/imagens', imagens);
 
 // Freia criação de pedidos falsos.
 app.post('/pedidos', limite(10, 15, 'Muitos pedidos em pouco tempo. Tente de novo daqui a alguns minutos.'));

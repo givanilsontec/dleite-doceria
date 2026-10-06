@@ -1,11 +1,13 @@
 // Gestão do cardápio no painel: o casal marca o que acabou, muda preços, cria produtos e promoções.
 // Tudo é salvo na hora no banco (e vale para quem abrir o site depois).
 
-import { listarProdutosPainel, salvarProdutoPainel, sairDoPainel } from '../api.js';
+import { listarProdutosPainel, salvarProdutoPainel, sairDoPainel, enviarFotoPainel, removerFotoPainel } from '../api.js';
 import { renderComLogin, abrirAlterarSenha } from './painel.js';
 import { esc, dinheiro, icone, estadoHTML, carregandoHTML, toast } from '../ui.js';
 
 const FOCAVEIS = 'button:not([disabled]), input:not([disabled]), select, textarea, [href]';
+const TIPOS_FOTO = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_FOTO = 10 * 1024 * 1024;
 
 // "10,50" ou "10.5" -> 10.5 ; vazio -> null
 function numero(texto) {
@@ -26,9 +28,12 @@ function resumoHTML(p) {
 
 function itemHTML(p) {
   return `<article class="gestao-item ${p.disponivel ? '' : 'inativo'}">
-    <div>
+    <div class="gestao-info">
+      ${p.foto ? `<img class="gestao-foto" src="${esc(p.foto)}" alt="" loading="lazy">` : '<span class="gestao-foto sem-foto" aria-hidden="true"></span>'}
+      <div>
       <h2 class="gestao-nome">${esc(p.nome)}</h2>
       <p class="gestao-meta">${resumoHTML(p)}</p>
+      </div>
     </div>
     <div class="gestao-acoes">
       <button type="button" class="chip" data-acao="alternar" data-id="${esc(p.id)}" aria-pressed="${p.disponivel}"
@@ -63,6 +68,18 @@ function abrirFormulario(produto, categorias, aoSalvar, aoExpirar) {
         <button type="button" class="botao-fechar" data-acao="fechar" aria-label="Fechar">${icone('fechar')}</button>
       </div>
       <form class="modal-corpo" data-form novalidate>
+        <div class="campo campo-foto">
+          <span class="campo-rotulo" id="f-foto-rotulo">Foto <span class="campo-opcional">(opcional)</span></span>
+          <div class="foto-previa" data-previa>
+            ${p.foto ? `<img src="${esc(p.foto)}" alt="Foto atual de ${esc(p.nome)}">` : '<span class="foto-vazia">Sem foto: aparece o desenho padrão</span>'}
+          </div>
+          <div class="foto-acoes">
+            <label class="botao botao-secundario botao-pequeno" for="f-foto">${icone('mais')} ${p.foto ? 'Trocar foto' : 'Escolher foto'}</label>
+            <input class="visualmente-oculto" type="file" id="f-foto" name="foto" accept="image/jpeg,image/png,image/webp" aria-labelledby="f-foto-rotulo">
+            <button type="button" class="botao botao-fantasma botao-pequeno" data-acao="remover-foto" ${p.foto ? '' : 'hidden'}>Remover foto</button>
+          </div>
+          <p class="campo-dica">A foto aparece inteira no card. Pode tirar na hora pelo celular.</p>
+        </div>
         <div class="campo">
           <label class="campo-rotulo" for="f-nome">Nome</label>
           <input class="entrada" id="f-nome" name="nome" value="${esc(p.nome)}" maxlength="80">
@@ -119,8 +136,36 @@ function abrirFormulario(produto, categorias, aoSalvar, aoExpirar) {
 
   const mostrarErro = (msg) => { erro.textContent = msg; erro.hidden = !msg; };
 
+  // ---------- foto ----------
+  let arquivoFoto = null;      // foto nova escolhida (ainda não enviada)
+  let removerFoto = false;     // marcou "Remover foto"
+  let urlPrevia = null;        // endereço temporário da prévia (liberado ao fechar)
+  let idSalvo = produto?.id;   // se a foto falhar depois de salvar um produto novo, não cria outro
+  const previa = fundo.querySelector('[data-previa]');
+  const botaoRemover = fundo.querySelector('[data-acao="remover-foto"]');
+
+  function mostrarPrevia(url, texto) {
+    if (urlPrevia) URL.revokeObjectURL(urlPrevia);
+    urlPrevia = url && url.startsWith('blob:') ? url : null;
+    previa.innerHTML = url ? `<img src="${esc(url)}" alt="${esc(texto)}">` : '<span class="foto-vazia">Sem foto: aparece o desenho padrão</span>';
+  }
+
+  form.elements.foto.addEventListener('change', (evento) => {
+    const arquivo = evento.target.files[0];
+    evento.target.value = ''; // permite escolher a mesma foto de novo
+    if (!arquivo) return;
+    if (!TIPOS_FOTO.includes(arquivo.type)) { mostrarErro('Escolha uma foto em JPG, PNG ou WEBP.'); return; }
+    if (arquivo.size > MAX_FOTO) { mostrarErro('A foto é grande demais (máximo 10 MB).'); return; }
+    mostrarErro('');
+    arquivoFoto = arquivo;
+    removerFoto = false;
+    mostrarPrevia(URL.createObjectURL(arquivo), 'Prévia da nova foto');
+    botaoRemover.hidden = false;
+  });
+
   function fechar() {
     document.removeEventListener('keydown', aoTeclar);
+    if (urlPrevia) URL.revokeObjectURL(urlPrevia);
     fundo.remove();
     document.body.classList.remove('modal-aberto');
   }
@@ -170,7 +215,24 @@ function abrirFormulario(produto, categorias, aoSalvar, aoExpirar) {
     botaoSalvar.disabled = true;
     botaoSalvar.textContent = 'Salvando…';
     try {
-      await salvarProdutoPainel(produto?.id, dados);
+      const salvo = await salvarProdutoPainel(idSalvo, dados);
+      idSalvo = salvo.id;
+      if (arquivoFoto) {
+        botaoSalvar.textContent = 'Enviando foto…';
+        try {
+          await enviarFotoPainel(idSalvo, arquivoFoto);
+        } catch (e) {
+          if (e.status === 401) throw e;
+          // o produto já foi salvo: avisa e deixa tentar a foto de novo
+          aoSalvar();
+          mostrarErro(`O produto foi salvo, mas a foto não: ${e.message} Tente outra foto e salve de novo.`);
+          botaoSalvar.disabled = false;
+          botaoSalvar.textContent = 'Salvar';
+          return;
+        }
+      } else if (removerFoto) {
+        await removerFotoPainel(idSalvo);
+      }
       fechar();
       toast(novo ? 'Produto criado' : 'Alterações salvas');
       aoSalvar();
@@ -189,6 +251,12 @@ function abrirFormulario(produto, categorias, aoSalvar, aoExpirar) {
     const { acao } = alvo.dataset;
     if (acao === 'fechar') fechar();
     if (acao === 'salvar') salvar();
+    if (acao === 'remover-foto') {
+      arquivoFoto = null;
+      removerFoto = Boolean(produto?.foto);
+      mostrarPrevia(null);
+      botaoRemover.hidden = true;
+    }
     if (acao === 'add-sabor') {
       fundo.querySelector('[data-sabores]').insertAdjacentHTML('beforeend', saborLinhaHTML());
       fundo.querySelector('[data-sabores]').lastElementChild.querySelector('input').focus();
