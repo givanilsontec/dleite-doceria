@@ -5,6 +5,7 @@
 
 import { CONFIG } from './config.js';
 import { carrinho } from './cart.js';
+import { loja } from './loja.js';
 import { icone, dinheiro } from './ui.js';
 import * as cardapio from './pages/cardapio.js';
 import * as paginaCarrinho from './pages/carrinho.js';
@@ -61,7 +62,8 @@ function atualizarCarrinhoNaTela() {
     .setAttribute('aria-label', quantidade ? `Carrinho, ${textoQtd}` : 'Carrinho');
 
   const noCarrinho = rotaAtual?.pagina === paginaCarrinho;
-  const mostrarBarra = (rotaAtual?.aba === 'cardapio' || noCarrinho) && quantidade > 0;
+  // Loja fechada: sem barra "Ver pedido"/"Continuar" (o cliente não avança para a finalização).
+  const mostrarBarra = (rotaAtual?.aba === 'cardapio' || noCarrinho) && quantidade > 0 && loja.aberta;
   barraCarrinho.hidden = !mostrarBarra;
   document.body.classList.toggle('com-barra', mostrarBarra);
   if (mostrarBarra) {
@@ -135,5 +137,7 @@ document.querySelectorAll('[data-icone]').forEach((alvo) => {
 });
 
 carrinho.assinar(atualizarCarrinhoNaTela);
+loja.assinar(atualizarCarrinhoNaTela);
+loja.iniciar();
 window.addEventListener('hashchange', rotear);
 rotear();

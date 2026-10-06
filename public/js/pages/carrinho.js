@@ -1,5 +1,5 @@
 import { carrinho, LIMITE_POR_ITEM } from '../cart.js';
-import { buscarLoja } from '../api.js';
+import { loja } from '../loja.js';
 import { esc, dinheiro, icone, ilustracao, midiaProduto, classeCategoria, metaItemHTML, estadoHTML } from '../ui.js';
 
 function itemHTML(item) {
@@ -32,21 +32,12 @@ const VAZIO = estadoHTML({
 
 export function render({ el, navegar }) {
   el.innerHTML = '<div class="pagina pagina-estreita" data-conteudo></div>';
-  let avisoLoja = '';
   let ativo = true;
-  buscarLoja()
-    .then((loja) => {
-      if (!ativo || loja.aberta) return;
-      avisoLoja = `${loja.aviso} Os pedidos estão pausados.`;
-      const aviso = el.querySelector('[data-aviso-loja]');
-      if (aviso) { aviso.textContent = avisoLoja; aviso.hidden = false; }
-    })
-    .catch(() => {});
   const conteudo = el.querySelector('[data-conteudo]');
 
   function montarEstrutura() {
     conteudo.innerHTML = `
-      <div class="aviso aviso-erro aviso-loja" data-aviso-loja role="status" ${avisoLoja ? '' : 'hidden'}>${esc(avisoLoja)}</div>
+      <div class="aviso aviso-erro aviso-loja" data-aviso-loja role="status" hidden></div>
       <h1 class="titulo-pagina">Seu pedido</h1>
       <p class="texto-apoio">Confira os doces, ajuste as quantidades e siga para a entrega.</p>
       <div class="pilha espaco-topo">
@@ -61,6 +52,19 @@ export function render({ el, navegar }) {
         <button type="button" class="botao botao-primario botao-bloco" data-acao="continuar">Continuar para entrega</button>
       </div>`;
     conteudo.querySelector('[data-obs]').value = carrinho.observacoes;
+  }
+
+  // Loja fechada: os itens ficam guardados, mas não dá para aumentar quantidades nem seguir para a entrega.
+  function aplicarLoja() {
+    const fechada = !loja.aberta;
+    const aviso = conteudo.querySelector('[data-aviso-loja]');
+    if (!aviso) return;
+    aviso.textContent = fechada ? `${loja.aviso} Seu pedido fica guardado aqui: quando abrirmos, é só continuar.` : '';
+    aviso.hidden = !fechada;
+    const continuar = conteudo.querySelector('[data-acao="continuar"]');
+    continuar.disabled = fechada;
+    continuar.textContent = fechada ? 'Loja fechada no momento' : 'Continuar para entrega';
+    conteudo.querySelectorAll('[data-acao="mais"]').forEach((b) => { if (fechada) b.disabled = true; });
   }
 
   function desenhar() {
@@ -85,6 +89,7 @@ export function render({ el, navegar }) {
         <strong>${dinheiro(carrinho.totalValor())}</strong>
       </div>
       <p class="nota">A taxa de entrega, se houver, aparece na próxima etapa.</p>`;
+    aplicarLoja(); // por último: os botões da lista acabaram de ser redesenhados
   }
 
   el.addEventListener('click', (evento) => {
@@ -93,10 +98,11 @@ export function render({ el, navegar }) {
     const { acao, chave } = alvo.dataset;
 
     if (acao === 'continuar') {
+      if (!loja.aberta) return;
       navegar('/checkout');
       return;
     }
-    if (acao === 'mais') carrinho.alterar(chave, 1);
+    if (acao === 'mais' && loja.aberta) carrinho.alterar(chave, 1);
     if (acao === 'menos') carrinho.alterar(chave, -1);
     if (acao === 'remover') carrinho.remover(chave);
 
@@ -112,9 +118,11 @@ export function render({ el, navegar }) {
 
   const cancelarAssinatura = carrinho.assinar(desenhar);
   desenhar();
+  const cancelarLoja = loja.assinar(() => { if (ativo) desenhar(); });
 
   return () => {
     ativo = false;
     cancelarAssinatura();
+    cancelarLoja();
   };
 }

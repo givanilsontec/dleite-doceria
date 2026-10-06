@@ -1,4 +1,5 @@
-import { listarProdutos, buscarLoja } from '../api.js';
+import { listarProdutos } from '../api.js';
+import { loja } from '../loja.js';
 import { carrinho, chaveDe, LIMITE_POR_ITEM } from '../cart.js';
 import { abrirModalProduto } from '../modal.js';
 import { ligarCarrosseis } from '../carrossel.js';
@@ -18,6 +19,8 @@ function precisaEscolher(produto) {
 
 function controleHTML(produto) {
   if (produto.preco === null) return '';
+  // Loja fechada: só para olhar. Nada de "+" ou "Escolher".
+  if (!loja.aberta) return '<span class="selo-fechado">Fechado agora</span>';
 
   if (precisaEscolher(produto)) {
     const qtd = carrinho.quantidadeDe(produto.id);
@@ -165,11 +168,18 @@ export function render({ el }) {
       return;
     }
 
+    // Com a loja fechada, nenhum botão de pedir funciona (proteção extra além de escondê-los).
+    if (!loja.aberta && ['escolher', 'adicionar', 'mais'].includes(acao)) {
+      toast(loja.aviso, 'erro');
+      return;
+    }
+
     if (acao === 'escolher') {
       const produto = produtos.find((p) => String(p.id) === id);
       if (!produto) return;
       abrirModalProduto(produto, {
         aoAdicionar: (escolha) => {
+          if (!loja.aberta) { toast(loja.aviso, 'erro'); return; } // fechou com a janela aberta
           if (carrinho.adicionar(produto, escolha)) toast('Adicionado ao pedido');
         },
         // O botão foi redesenhado ao adicionar: devolve o foco ao novo botão.
@@ -196,17 +206,20 @@ export function render({ el }) {
 
   const cancelarAssinatura = carrinho.assinar(atualizarControles);
   carregar();
-  buscarLoja()
-    .then((loja) => {
-      if (!ativo || loja.aberta) return;
-      const aviso = el.querySelector('[data-aviso-loja]');
-      aviso.textContent = `${loja.aviso} Você pode ver o cardápio, mas os pedidos estão pausados.`;
-      aviso.hidden = false;
-    })
-    .catch(() => {});
+  // Aviso no topo + cardápio acinzentado enquanto a loja estiver fechada; volta sozinho quando abrir.
+  const cancelarLoja = loja.assinar((estado) => {
+    if (!ativo) return;
+    const fechada = estado.aberta === false;
+    const aviso = el.querySelector('[data-aviso-loja]');
+    aviso.textContent = fechada ? `${loja.aviso} Você pode ver o cardápio, mas os pedidos estão pausados.` : '';
+    aviso.hidden = !fechada;
+    grade.classList.toggle('loja-fechada', fechada);
+    atualizarControles();
+  });
 
   return () => {
     ativo = false;
     cancelarAssinatura();
+    cancelarLoja();
   };
 }

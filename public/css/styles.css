@@ -952,3 +952,14 @@ body:not(.modo-interno) {
   background-size: 260px 260px;
   background-repeat: repeat;
 }
+
+/* ---------- Loja fechada: cardápio só para olhar ---------- */
+/* Fotos "apagadas" (ainda com um pouco de cor), sem botões de pedir. */
+.loja-fechada .produto-imagem img,
+.loja-fechada .produto-imagem svg { filter: grayscale(0.7) opacity(0.7); }
+.loja-fechada .carrossel-seta, .loja-fechada .carrossel-pontos { opacity: 0.6; }
+.selo-fechado {
+  display: inline-flex; align-items: center; min-height: 32px; padding: 4px 12px;
+  border-radius: var(--raio-pill); background: var(--casca); color: var(--cacau-70);
+  font-family: var(--fonte-titulo); font-size: 13px; font-weight: 600; white-space: nowrap;
+}
