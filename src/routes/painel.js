@@ -7,6 +7,8 @@ const { estadoLoja, validarConfigLoja } = require('../lib/loja');
 const { lerConfigLoja, gravarConfigLoja } = require('./loja');
 const { PERIODOS, resumoVendas } = require('../lib/vendas');
 const { TIPOS_ACEITOS, MAX_BYTES, prepararFoto } = require('../lib/fotos');
+const { validarTaxaEntrega } = require('../lib/entrega');
+const { lerConfigEntrega } = require('./taxas');
 
 const router = express.Router();
 router.use(exigirPainel);
@@ -67,6 +69,59 @@ router.get('/vendas', async (req, res, next) => {
       [dias + 1],
     );
     res.json(resumoVendas(rows, { dias }));
+  } catch (erro) {
+    next(erro);
+  }
+});
+
+// ---------- Taxas de entrega ----------
+// Duplicado (mesmo bairro ou mesma cidade) vira uma mensagem clara.
+function erroDuplicado(erro, dados) {
+  if (erro.code !== '23505') return erro;
+  return new ErroValidacao(dados.bairro ? `O bairro ${dados.bairro} já está na lista.` : `A cidade ${dados.cidade} já está na lista.`, 409);
+}
+
+// GET /painel/entrega  -> { cidade_principal, bairros: [{ id, bairro, taxa }], cidades: [{ id, cidade, taxa }] }
+router.get('/entrega', async (req, res, next) => {
+  try {
+    res.json(await lerConfigEntrega());
+  } catch (erro) {
+    next(erro);
+  }
+});
+
+// POST /painel/entrega  { tipo: 'bairro', bairro, taxa } | { tipo: 'cidade', cidade, taxa }
+router.post('/entrega', async (req, res, next) => {
+  let dados;
+  try {
+    dados = validarTaxaEntrega(req.body);
+    await db.query('insert into taxas_entrega (cidade, bairro, taxa) values ($1, $2, $3)', [dados.cidade, dados.bairro, dados.taxa]);
+    res.status(201).json(await lerConfigEntrega());
+  } catch (erro) {
+    next(erroDuplicado(erro, dados || {}));
+  }
+});
+
+// PATCH /painel/entrega/:id  (mesmo formato do POST)
+router.patch('/entrega/:id', async (req, res, next) => {
+  let dados;
+  try {
+    if (!UUID.test(req.params.id)) return res.status(404).json({ erro: 'Não encontrado.' });
+    dados = validarTaxaEntrega(req.body);
+    const r = await db.query('update taxas_entrega set cidade = $2, bairro = $3, taxa = $4 where id = $1', [req.params.id, dados.cidade, dados.bairro, dados.taxa]);
+    if (!r.rowCount) return res.status(404).json({ erro: 'Não encontrado.' });
+    res.json(await lerConfigEntrega());
+  } catch (erro) {
+    next(erroDuplicado(erro, dados || {}));
+  }
+});
+
+// DELETE /painel/entrega/:id
+router.delete('/entrega/:id', async (req, res, next) => {
+  try {
+    if (!UUID.test(req.params.id)) return res.status(404).json({ erro: 'Não encontrado.' });
+    await db.query('delete from taxas_entrega where id = $1', [req.params.id]);
+    res.json(await lerConfigEntrega());
   } catch (erro) {
     next(erro);
   }

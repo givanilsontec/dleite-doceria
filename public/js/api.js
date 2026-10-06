@@ -101,9 +101,6 @@ function normalizarProduto(p) {
   };
 }
 
-function normalizarTaxa(t) {
-  return { bairro: t.bairro, taxa: Number(t.taxa) || 0 };
-}
 
 // taxa_entrega: null = "a combinar"; número = valor (0 = sem taxa).
 function normalizarPedido(p) {
@@ -133,9 +130,15 @@ export async function listarProdutos() {
 }
 
 // GET /taxas-entrega
+// -> { cidade_principal, bairros: [{ bairro, taxa }], cidades: [{ cidade, taxa }] }
 export async function listarTaxasEntrega() {
-  const lista = await request('/taxas-entrega');
-  return lista.map(normalizarTaxa);
+  const r = await request('/taxas-entrega');
+  const taxa = (v) => Number(v) || 0;
+  return {
+    cidade_principal: r.cidade_principal || 'Carpina',
+    bairros: (r.bairros || []).map((b) => ({ bairro: b.bairro, taxa: taxa(b.taxa) })),
+    cidades: (r.cidades || []).map((c) => ({ cidade: c.cidade, taxa: taxa(c.taxa) })),
+  };
 }
 
 // GET /loja  -> { aberta, motivo, aviso, aceita_entrega, aceita_retirada, endereco_retirada }
@@ -273,4 +276,25 @@ export function enviarFotoPainel(id, arquivo) {
 // DELETE /painel/produtos/:id/foto
 export function removerFotoPainel(id) {
   return request(`/painel/produtos/${encodeURIComponent(id)}/foto`, { method: 'DELETE', headers: cabecalhoPainel() });
+}
+
+// ---------- Taxas de entrega no painel ----------
+
+// GET /painel/entrega  -> { cidade_principal, bairros: [{ id, bairro, taxa }], cidades: [{ id, cidade, taxa }] }
+export function lerEntregaPainel() {
+  return request('/painel/entrega', { headers: cabecalhoPainel() });
+}
+
+// POST (sem id) ou PATCH /painel/entrega/:id  com { tipo: 'bairro'|'cidade', bairro|cidade, taxa }
+export function salvarTaxaEntregaPainel(id, dados) {
+  return request(id ? `/painel/entrega/${encodeURIComponent(id)}` : '/painel/entrega', {
+    method: id ? 'PATCH' : 'POST',
+    headers: cabecalhoPainel(),
+    body: JSON.stringify(dados),
+  });
+}
+
+// DELETE /painel/entrega/:id
+export function removerTaxaEntregaPainel(id) {
+  return request(`/painel/entrega/${encodeURIComponent(id)}`, { method: 'DELETE', headers: cabecalhoPainel() });
 }

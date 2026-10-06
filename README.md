@@ -25,6 +25,7 @@ O objetivo foi dar à doceria um cardápio com preços sempre atualizados, um pe
 - **Pedidos** com fluxo de status (Novo → Confirmado → Em produção → Pronto → Saiu para entrega → Entregue, ou Cancelado), atualização automática e destaque para pedidos novos.
 - **Aviso ao cliente em um toque**: ao mudar o status, o WhatsApp do cliente abre com a mensagem certa ("seu pedido foi aceito", "saiu para entrega"...), com saudação conforme o horário.
 - **Gestão do cardápio**: foto do produto (tirada pelo celular, ajustada e guardada pelo servidor), preços, preço por sabor, sabor ou produto esgotado, promoções e produtos novos, sem mexer no código.
+- **Entrega**: bairros de Carpina, cada um com sua taxa, e outras cidades com valor fixo. O cliente escolhe a cidade e o bairro no checkout; fora da lista, a taxa fica a combinar.
 - **Loja e horário**: pausar pedidos com mensagem, horário de funcionamento por dia (fuso de Recife), entrega e retirada.
 - **Vendas**: faturamento de hoje, do período (7, 30 ou 90 dias), média por dia e melhor dia; gráfico de linha do faturamento dia a dia e rosca do que foi vendido, com tabela para conferir.
 - **Acesso protegido**: senha do casal, troca de senha pelo próprio painel, "manter conectado neste aparelho" e aviso do último acesso (data e IP).
@@ -109,6 +110,7 @@ src/
 ├── lib/loja.js            → pausa, horário por dia, entrega/retirada (puro, testado)
 ├── lib/vendas.js          → resumo de vendas por dia (fuso de Recife) e por doce (puro, testado)
 ├── lib/limpeza.js         → apaga dados pessoais de pedidos com mais de 15 dias
+├── lib/entrega.js         → taxa por bairro (Carpina) e por cidade, "a combinar" fora da lista (puro, testado)
 ├── lib/fotos.js           → regrava a foto enviada: JPG 1200x900, inteira, com margem creme (testado)
 └── routes/
     ├── produtos.js        → GET /produtos
@@ -127,7 +129,8 @@ tests/regras.test.js
 | Rota | Acesso | Descrição |
 |---|---|---|
 | `GET /produtos` | público | Cardápio disponível (sem sabores esgotados) |
-| `GET /taxas-entrega` | público | Taxas por bairro (vazia = entrega grátis) |
+| `GET /taxas-entrega` | público | Bairros de Carpina e outras cidades com as taxas (tudo vazio = entrega grátis) |
+| `GET/POST /painel/entrega`, `PATCH/DELETE /painel/entrega/:id` | token | Cadastro das taxas de entrega |
 | `GET /loja` | público | Aberta/fechada, aviso, entrega/retirada |
 | `POST /pedidos` | público, com limite por IP | Cria o pedido; aceita `Idempotency-Key` |
 | `POST /painel/login` | senha | Devolve o token do painel |

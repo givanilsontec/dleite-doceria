@@ -4,8 +4,10 @@ const db = require('../config/db');
 const { exigirPainel } = require('../middleware/auth');
 const { estadoLoja } = require('../lib/loja');
 const { lerConfigLoja } = require('./loja');
+const { lerConfigEntrega } = require('./taxas');
+const { calcularTaxaEntrega } = require('../lib/entrega');
 const {
-  STATUS, UUID, ErroValidacao, calcularTaxa, validarPedido, montarItens, totalPedido,
+  STATUS, UUID, ErroValidacao, validarPedido, montarItens, totalPedido,
 } = require('../lib/regras');
 
 const router = express.Router();
@@ -100,8 +102,10 @@ router.post('/', async (req, res, next) => {
     }]));
 
     const itens = montarItens(dados.itens, produtos);
-    const { rows: taxas } = await db.query('select bairro, taxa from taxas_entrega');
-    const taxa = dados.tipo_entrega === 'retirada' ? 0 : calcularTaxa(taxas, dados.endereco_bairro);
+    // Taxa sempre calculada aqui, pela tabela que o casal mantém no painel (nunca vem do navegador).
+    const taxa = dados.tipo_entrega === 'retirada'
+      ? 0
+      : calcularTaxaEntrega(await lerConfigEntrega(), { cidade: dados.endereco_cidade, bairro: dados.endereco_bairro });
 
     cliente = await db.connect();
     let pedido;

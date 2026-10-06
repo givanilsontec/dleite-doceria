@@ -35,13 +35,6 @@ function precoDoSabor(produto, sabor) {
 }
 const deCentavos = (c) => c / 100;
 
-// Tabela vazia = 0; bairro achado = valor; bairro fora da tabela (ou sem bairro) = null ("a combinar").
-function calcularTaxa(taxas, bairro) {
-  if (!taxas.length) return 0;
-  const achada = taxas.find((t) => normalizarTexto(t.bairro) === normalizarTexto(bairro));
-  return achada ? Number(achada.taxa) : null;
-}
-
 function textoOpcional(valor, max, campo) {
   if (valor === undefined || valor === null || valor === '') return null;
   if (typeof valor !== 'string') throw new ErroValidacao(`Campo inválido: ${campo}.`);
@@ -215,5 +208,5 @@ function validarProduto(corpo) {
 module.exports = {
   STATUS, TIPOS_ENTREGA, PAGAMENTOS, UUID, ErroValidacao,
   validarProduto,
-  normalizarTexto, calcularTaxa, calcularDesconto, precoDoSabor, validarPedido, montarItens, totalPedido,
+  normalizarTexto, calcularDesconto, precoDoSabor, validarPedido, montarItens, totalPedido,
 };

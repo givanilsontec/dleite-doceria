@@ -32,11 +32,19 @@ create table if not exists adicionais (
   disponivel boolean not null default true
 );
 
+-- Taxas de entrega (editadas pelo casal no painel):
+--   bairros de Carpina: cidade = 'Carpina', bairro = nome, taxa do bairro;
+--   outras cidades: bairro = null, taxa fixa para a cidade inteira.
 create table if not exists taxas_entrega (
   id uuid primary key default gen_random_uuid(),
-  bairro text not null unique,
+  cidade text not null default 'Carpina',
+  bairro text,
   taxa numeric(10,2) not null check (taxa >= 0)
 );
+alter table taxas_entrega add column if not exists cidade text not null default 'Carpina';
+alter table taxas_entrega alter column bairro drop not null;
+alter table taxas_entrega drop constraint if exists taxas_entrega_bairro_key;
+create unique index if not exists taxas_entrega_unica on taxas_entrega (lower(cidade), lower(coalesce(bairro, '')));
 
 create table if not exists pedidos (
   id uuid primary key default gen_random_uuid(),

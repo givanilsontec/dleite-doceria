@@ -6,6 +6,7 @@ import {
 } from '../ui.js';
 
 const OUTRO_BAIRRO = '__outro';
+const OUTRA_CIDADE = '__outra';
 
 function campoHTML({ id, rotulo, valor = '', tipo = 'text', placeholder = '', autocomplete = '', inputmode = '', opcional = false, dica = '', maxlength = 160 }) {
   const descricao = [dica ? `dica-${id}` : '', `erro-${id}`].filter(Boolean).join(' ');
@@ -56,18 +57,33 @@ export function render({ el, navegar }) {
       el.innerHTML = VAZIO('Os doces do seu pedido saíram do cardápio. Escolha outros, por favor.');
       return;
     }
-    montar(taxas || [], taxas === null, loja || { aberta: true, aceita_entrega: true, aceita_retirada: false }, mudou);
+    const semTabela = { cidade_principal: 'Carpina', bairros: [], cidades: [] };
+    montar(taxas || semTabela, taxas === null, loja || { aberta: true, aceita_entrega: true, aceita_retirada: false }, mudou);
   });
 
-  function montar(taxas, falhouTaxas, loja, cardapioMudou) {
-    const comTaxas = taxas.length > 0;
+  // entrega = { cidade_principal, bairros: [{ bairro, taxa }], cidades: [{ cidade, taxa }] }, mantido pelo casal no painel.
+  function montar(entrega, falhouTaxas, loja, cardapioMudou) {
+    const principal = entrega.cidade_principal;
+    const { bairros, cidades } = entrega;
+    // Com algo cadastrado, o cliente escolhe a cidade (e, na principal, o bairro numa lista).
+    const comTabela = bairros.length > 0 || cidades.length > 0;
+    const comBairros = bairros.length > 0;
     const salvo = lerLocal(CHAVES.cliente, {}) || {};
     const itens = carrinho.itens;
     const observacoesCarrinho = carrinho.observacoes.trim();
     const subtotal = carrinho.totalValor();
-    const bairroSalvoNaLista = comTaxas && taxas.some((t) => t.bairro === salvo.endereco_bairro);
+    const mesmo = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+
+    // Cidade e bairro do último pedido (se o cliente pediu para lembrar).
+    const cidadeSalva = salvo.endereco_cidade || principal;
+    const cidadeInicial = mesmo(cidadeSalva, principal)
+      ? principal
+      : (cidades.find((x) => mesmo(x.cidade, cidadeSalva))?.cidade || (salvo.endereco_cidade ? OUTRA_CIDADE : principal));
+    const naPrincipal = cidadeInicial === principal;
+    const bairroSalvoNaLista = naPrincipal && comBairros && bairros.some((b) => mesmo(b.bairro, salvo.endereco_bairro));
     // Bairro salvo que não está na lista: reabre como "Outro bairro", já preenchido.
-    const bairroSalvoOutro = comTaxas && Boolean(salvo.endereco_bairro) && !bairroSalvoNaLista;
+    const bairroSalvoOutro = naPrincipal && comBairros && Boolean(salvo.endereco_bairro) && !bairroSalvoNaLista;
+    const precoTexto = (v) => (v > 0 ? dinheiro(v) : 'entrega grátis');
 
     const modos = [
       loja.aceita_entrega !== false && { valor: 'entrega', rotulo: 'Entrega', detalhe: 'Levamos até você.' },
@@ -75,20 +91,41 @@ export function render({ el, navegar }) {
     ].filter(Boolean);
     const modoInicial = modos.some((m) => m.valor === salvo.tipo_entrega) ? salvo.tipo_entrega : modos[0].valor;
 
-    const campoBairro = comTaxas ? `
+    // Sem nada cadastrado: bairro e cidade digitados, entrega grátis (como antes).
+    // Com tabela: cidade numa lista; na principal, bairro numa lista com a taxa; nas outras, bairro digitado.
+    const camposLocal = !comTabela ? `
+      ${campoHTML({ id: 'endereco_bairro', rotulo: 'Bairro', valor: salvo.endereco_bairro, autocomplete: 'address-level3', maxlength: 80 })}
+      ${campoHTML({ id: 'endereco_cidade', rotulo: 'Cidade', valor: salvo.endereco_cidade, opcional: true, autocomplete: 'address-level2', maxlength: 80 })}` : `
       <div class="campo">
-        <label class="campo-rotulo" for="bairro_sel">Bairro</label>
-        <select class="entrada" id="bairro_sel" name="bairro_sel" aria-describedby="erro-bairro_sel">
-          <option value="">Selecione o bairro</option>
-          ${taxas.map((t) => `<option value="${esc(t.bairro)}" ${bairroSalvoNaLista && t.bairro === salvo.endereco_bairro ? 'selected' : ''}>${esc(t.bairro)}: ${t.taxa > 0 ? dinheiro(t.taxa) : 'entrega grátis'}</option>`).join('')}
-          <option value="${OUTRO_BAIRRO}" ${bairroSalvoOutro ? 'selected' : ''}>Outro bairro</option>
+        <label class="campo-rotulo" for="cidade_sel">Cidade</label>
+        <select class="entrada" id="cidade_sel" name="cidade_sel" aria-describedby="erro-cidade_sel">
+          <option value="${esc(principal)}" ${naPrincipal ? 'selected' : ''}>${esc(principal)}</option>
+          ${cidades.map((x) => `<option value="${esc(x.cidade)}" ${cidadeInicial === x.cidade ? 'selected' : ''}>${esc(x.cidade)}: ${precoTexto(x.taxa)}</option>`).join('')}
+          <option value="${OUTRA_CIDADE}" ${cidadeInicial === OUTRA_CIDADE ? 'selected' : ''}>Outra cidade (taxa a combinar)</option>
         </select>
-        <p class="campo-erro" id="erro-bairro_sel" hidden></p>
+        <p class="campo-erro" id="erro-cidade_sel" hidden></p>
       </div>
-      <div data-bairro-outro ${bairroSalvoOutro ? '' : 'hidden'}>
-        ${campoHTML({ id: 'bairro_outro', rotulo: 'Qual é o seu bairro?', valor: bairroSalvoOutro ? salvo.endereco_bairro : '', maxlength: 80, dica: 'A taxa de entrega para esse bairro será combinada pelo WhatsApp.' })}
-      </div>`
-      : campoHTML({ id: 'endereco_bairro', rotulo: 'Bairro', valor: salvo.endereco_bairro, autocomplete: 'address-level3', maxlength: 80 });
+      <div data-cidade-outra ${cidadeInicial === OUTRA_CIDADE ? '' : 'hidden'}>
+        ${campoHTML({ id: 'cidade_outra', rotulo: 'Qual é a sua cidade?', valor: cidadeInicial === OUTRA_CIDADE ? salvo.endereco_cidade : '', maxlength: 80, dica: 'A taxa de entrega para essa cidade será combinada pelo WhatsApp.' })}
+      </div>
+      ${comBairros ? `
+      <div data-bairros-principal ${naPrincipal ? '' : 'hidden'}>
+        <div class="campo">
+          <label class="campo-rotulo" for="bairro_sel">Bairro</label>
+          <select class="entrada" id="bairro_sel" name="bairro_sel" aria-describedby="erro-bairro_sel">
+            <option value="">Selecione o bairro</option>
+            ${bairros.map((b) => `<option value="${esc(b.bairro)}" ${bairroSalvoNaLista && mesmo(b.bairro, salvo.endereco_bairro) ? 'selected' : ''}>${esc(b.bairro)}: ${precoTexto(b.taxa)}</option>`).join('')}
+            <option value="${OUTRO_BAIRRO}" ${bairroSalvoOutro ? 'selected' : ''}>Outro bairro (taxa a combinar)</option>
+          </select>
+          <p class="campo-erro" id="erro-bairro_sel" hidden></p>
+        </div>
+        <div data-bairro-outro ${bairroSalvoOutro ? '' : 'hidden'}>
+          ${campoHTML({ id: 'bairro_outro', rotulo: 'Qual é o seu bairro?', valor: bairroSalvoOutro ? salvo.endereco_bairro : '', maxlength: 80, dica: 'A taxa de entrega para esse bairro será combinada pelo WhatsApp.' })}
+        </div>
+      </div>` : ''}
+      <div data-bairro-texto ${!naPrincipal || !comBairros ? '' : 'hidden'}>
+        ${campoHTML({ id: 'bairro_texto', rotulo: 'Bairro', valor: !bairroSalvoNaLista && !bairroSalvoOutro ? salvo.endereco_bairro : '', autocomplete: 'address-level3', maxlength: 80 })}
+      </div>`;
 
     el.innerHTML = `
       <div class="pagina pagina-estreita">
@@ -139,8 +176,7 @@ export function render({ el, navegar }) {
             <h2 class="cartao-titulo">Endereço de entrega</h2>
             <div class="campos">
               ${campoHTML({ id: 'endereco_rua', rotulo: 'Rua e número', valor: salvo.endereco_rua, autocomplete: 'address-line1', placeholder: 'Ex.: Rua das Flores, 120' })}
-              ${campoBairro}
-              ${campoHTML({ id: 'endereco_cidade', rotulo: 'Cidade', valor: salvo.endereco_cidade, opcional: true, autocomplete: 'address-level2', maxlength: 80 })}
+              ${camposLocal}
               ${campoHTML({ id: 'endereco_complemento', rotulo: 'Complemento ou referência', valor: salvo.endereco_complemento, opcional: true, autocomplete: 'address-line2', placeholder: 'Ex.: casa azul, apto 2' })}
             </div>
           </section>
@@ -194,20 +230,30 @@ export function render({ el, navegar }) {
     const blocoTroco = el.querySelector('[data-troco]');
     const totais = el.querySelector('[data-totais]');
     const blocoOutro = el.querySelector('[data-bairro-outro]');
+    const blocoBairrosPrincipal = el.querySelector('[data-bairros-principal]');
+    const blocoBairroTexto = el.querySelector('[data-bairro-texto]');
+    const blocoCidadeOutra = el.querySelector('[data-cidade-outra]');
     const blocoEndereco = el.querySelector('[data-bloco-endereco]');
     const blocoRetirada = el.querySelector('[data-bloco-retirada]');
 
     const valor = (nome) => (form.elements[nome]?.value || '').trim();
     const modo = () => form.elements.tipo_entrega.value;
 
-    // Situação da entrega conforme o modo e o bairro escolhido.
+    const cidadeSel = () => form.elements.cidade_sel?.value || principal;
+    const naCidadePrincipal = () => cidadeSel() === principal;
+
+    // Situação da entrega conforme o modo, a cidade e o bairro escolhidos (mesma regra do servidor).
     function entregaAtual() {
       if (modo() === 'retirada') return { tipo: 'retirada', valor: 0 };
-      if (!comTaxas) return { tipo: 'nenhuma', valor: 0 };
+      if (!comTabela) return { tipo: 'nenhuma', valor: 0 };
+      const cidade = cidadeSel();
+      if (cidade === OUTRA_CIDADE) return { tipo: 'combinar', valor: 0 };
+      if (cidade !== principal) return { tipo: 'valor', valor: cidades.find((x) => x.cidade === cidade)?.taxa ?? 0 };
+      if (!comBairros) return { tipo: 'nenhuma', valor: 0 };
       const escolhido = form.elements.bairro_sel.value;
       if (!escolhido) return { tipo: 'indefinida', valor: 0 };
       if (escolhido === OUTRO_BAIRRO) return { tipo: 'combinar', valor: 0 };
-      return { tipo: 'valor', valor: taxas.find((t) => t.bairro === escolhido)?.taxa ?? 0 };
+      return { tipo: 'valor', valor: bairros.find((b) => b.bairro === escolhido)?.taxa ?? 0 };
     }
 
     function desenharTotais() {
@@ -241,9 +287,28 @@ export function render({ el, navegar }) {
     }
 
     function bairroEscolhido() {
-      if (!comTaxas) return valor('endereco_bairro');
-      const escolhido = form.elements.bairro_sel.value;
-      return escolhido === OUTRO_BAIRRO ? valor('bairro_outro') : escolhido;
+      if (!comTabela) return valor('endereco_bairro');
+      if (naCidadePrincipal() && comBairros) {
+        const escolhido = form.elements.bairro_sel.value;
+        return escolhido === OUTRO_BAIRRO ? valor('bairro_outro') : escolhido;
+      }
+      return valor('bairro_texto');
+    }
+
+    function cidadeEscolhida() {
+      if (!comTabela) return valor('endereco_cidade');
+      const cidade = cidadeSel();
+      return cidade === OUTRA_CIDADE ? valor('cidade_outra') : cidade;
+    }
+
+    // Mostra só os campos que fazem sentido para a cidade escolhida.
+    function ajustarCamposLocal() {
+      if (!comTabela) return;
+      const cidade = cidadeSel();
+      const principalComLista = cidade === principal && comBairros;
+      if (blocoBairrosPrincipal) blocoBairrosPrincipal.hidden = !principalComLista;
+      blocoBairroTexto.hidden = principalComLista;
+      blocoCidadeOutra.hidden = cidade !== OUTRA_CIDADE;
     }
 
     function validar() {
@@ -253,12 +318,17 @@ export function render({ el, navegar }) {
       const telefone = apenasDigitos(valor('cliente_whatsapp'));
       if (telefone.length < 10 || telefone.length > 11) erros.cliente_whatsapp = 'Informe o WhatsApp com DDD, como (11) 98765-4321.';
       if (entrega && valor('endereco_rua').length < 3) erros.endereco_rua = 'Informe a rua e o número.';
-      if (entrega && !comTaxas && valor('endereco_bairro').length < 2) erros.endereco_bairro = 'Informe o bairro.';
-      if (entrega && comTaxas && !form.elements.bairro_sel.value) erros.bairro_sel = 'Escolha o bairro para calcular a entrega.';
-      if (entrega && comTaxas && form.elements.bairro_sel.value === OUTRO_BAIRRO && valor('bairro_outro').length < 2) erros.bairro_outro = 'Informe o seu bairro.';
+      if (entrega && !comTabela && valor('endereco_bairro').length < 2) erros.endereco_bairro = 'Informe o bairro.';
+      if (entrega && comTabela) {
+        const listaPrincipal = naCidadePrincipal() && comBairros;
+        if (cidadeSel() === OUTRA_CIDADE && valor('cidade_outra').length < 2) erros.cidade_outra = 'Informe a sua cidade.';
+        if (listaPrincipal && !form.elements.bairro_sel.value) erros.bairro_sel = 'Escolha o bairro para calcular a entrega.';
+        if (listaPrincipal && form.elements.bairro_sel.value === OUTRO_BAIRRO && valor('bairro_outro').length < 2) erros.bairro_outro = 'Informe o seu bairro.';
+        if (!listaPrincipal && valor('bairro_texto').length < 2) erros.bairro_texto = 'Informe o bairro.';
+      }
       if (!form.elements.forma_pagamento.value) erros.forma_pagamento = 'Escolha a forma de pagamento.';
 
-      ['cliente_nome', 'cliente_whatsapp', 'endereco_rua', 'endereco_bairro', 'bairro_sel', 'bairro_outro', 'forma_pagamento'].forEach((nome) => {
+      ['cliente_nome', 'cliente_whatsapp', 'endereco_rua', 'endereco_bairro', 'cidade_outra', 'bairro_sel', 'bairro_outro', 'bairro_texto', 'forma_pagamento'].forEach((nome) => {
         if (form.elements[nome] || nome === 'forma_pagamento') mostrarErro(nome, erros[nome]);
       });
       return erros;
@@ -280,12 +350,17 @@ export function render({ el, navegar }) {
         const retirada = evento.target.value === 'retirada';
         blocoEndereco.hidden = retirada;
         blocoRetirada.hidden = !retirada;
-        ['endereco_rua', 'endereco_bairro', 'bairro_sel', 'bairro_outro'].forEach((n) => mostrarErro(n, ''));
+        ['endereco_rua', 'endereco_bairro', 'cidade_outra', 'bairro_sel', 'bairro_outro', 'bairro_texto'].forEach((n) => mostrarErro(n, ''));
         desenharTotais();
       }
       if (nome === 'forma_pagamento') {
         mostrarErro('forma_pagamento', '');
         blocoTroco.hidden = evento.target.value !== 'dinheiro';
+      }
+      if (nome === 'cidade_sel') {
+        ['cidade_outra', 'bairro_sel', 'bairro_outro', 'bairro_texto'].forEach((n) => mostrarErro(n, ''));
+        ajustarCamposLocal();
+        desenharTotais();
       }
       if (nome === 'bairro_sel') {
         mostrarErro('bairro_sel', '');
@@ -321,7 +396,7 @@ export function render({ el, navegar }) {
         cliente_whatsapp: apenasDigitos(valor('cliente_whatsapp')),
         endereco_rua: valor('endereco_rua'),
         endereco_bairro: bairroEscolhido() || null,
-        endereco_cidade: valor('endereco_cidade') || null,
+        endereco_cidade: cidadeEscolhida() || null,
         endereco_complemento: valor('endereco_complemento') || null,
         forma_pagamento: forma,
         tipo_entrega: tipo,
@@ -359,6 +434,7 @@ export function render({ el, navegar }) {
       }
     });
 
+    ajustarCamposLocal();
     desenharTotais();
   }
 

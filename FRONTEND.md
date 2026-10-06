@@ -31,7 +31,8 @@ public/
         ├── painel.js          /#/painel             (pedidos, status, senha)
         ├── painel-cardapio.js /#/painel/cardapio    (preços, esgotados, produtos novos)
         ├── painel-loja.js     /#/painel/loja        (pausar pedidos, horário, entrega/retirada)
-        └── painel-vendas.js   /#/painel/vendas      (resumo de vendas: cartões, linha e rosca em SVG)
+        ├── painel-vendas.js   /#/painel/vendas      (resumo de vendas: cartões, linha e rosca em SVG)
+        └── painel-entrega.js  /#/painel/entrega     (taxas por bairro de Carpina e por cidade)
 ```
 
 ## Ajustes (`public/js/config.js`)
@@ -62,6 +63,7 @@ Nome, WhatsApp e endereço só ficam salvos no aparelho se o cliente marcar "Lem
 - **Login**: senha única do casal; "Manter conectado neste aparelho" guarda o acesso por 7 dias (sem marcar, vale até fechar a aba). Trocar a senha desconecta todos.
 - **Cardápio**: foto do produto (escolher ou tirar pelo celular, prévia, trocar, remover; o servidor ajusta para 4:3 com a foto inteira e guarda no banco, porque o disco do Render grátis não é permanente), preço, nome, descrição, preço por sabor, sabor esgotado, produto fora do cardápio, promoção "leve N por R$ X", produto novo.
 - **Vendas**: cartões (hoje, período, média por dia, melhor dia), linha do faturamento dia a dia com marcador ao tocar/passar o mouse, rosca do que foi vendido com legenda (unidades, % e R$) e "Ver em tabela". Conta pedidos confirmados em diante (novos e cancelados ficam de fora). Gráficos em SVG próprio: a CSP não permite bibliotecas de fora.
+- **Entrega**: o casal cadastra os bairros de Carpina (cada um com sua taxa) e outras cidades (valor fixo). No checkout, o cliente escolhe a cidade e, em Carpina, o bairro numa lista; bairro ou cidade fora da lista fica "a combinar". Sem nada cadastrado, entrega grátis com bairro digitado.
 - **Loja e horário**: pausar pedidos com mensagem, horário por dia (fuso de Recife), entrega/retirada e endereço de retirada.
 
 ## Contrato da API

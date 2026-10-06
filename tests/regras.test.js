@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { calcularTaxa, validarPedido, montarItens, totalPedido, ErroValidacao } = require('../src/lib/regras');
+const { validarPedido, montarItens, totalPedido, ErroValidacao } = require('../src/lib/regras');
 
 const P1 = '11111111-1111-4111-8111-111111111111';
 const AD = '22222222-2222-4222-8222-222222222222';
@@ -14,14 +14,6 @@ const catalogo = () => new Map([[P1, {
   nome: 'Bolo de Pote', preco: 12, sabores: ['Chocotudo', 'Prestígio'],
   adicionais: [{ id: AD, nome: 'Nutella', preco: 2.1 }],
 }]]);
-
-test('taxa: tabela vazia = 0, bairro achado = valor, fora da tabela = null', () => {
-  assert.strictEqual(calcularTaxa([], 'Qualquer'), 0);
-  const taxas = [{ bairro: 'Jardim São Paulo', taxa: '6.00' }];
-  assert.strictEqual(calcularTaxa(taxas, 'jardim sao paulo'), 6);
-  assert.strictEqual(calcularTaxa(taxas, 'Centro'), null);
-  assert.strictEqual(calcularTaxa(taxas, null), null);
-});
 
 test('pedido válido passa e limpa o telefone', () => {
   assert.strictEqual(validarPedido(base()).cliente_whatsapp, '81999998888');
@@ -177,4 +169,30 @@ test('foto do painel: vira JPG 1200x900 com a imagem inteira; arquivo inválido 
   assert.ok(data[0] > 240 && data[1] > 240, 'margem creme no topo');
   await assert.rejects(prepararFoto(Buffer.from('isto não é uma imagem')), ErroFoto);
   await assert.rejects(prepararFoto(Buffer.alloc(0)), ErroFoto);
+});
+
+test('taxa de entrega: bairros de Carpina, valor fixo por cidade e "a combinar"', () => {
+  const { montarConfigEntrega, calcularTaxaEntrega, validarTaxaEntrega } = require('../src/lib/entrega');
+  const vazio = montarConfigEntrega([]);
+  assert.strictEqual(calcularTaxaEntrega(vazio, { cidade: 'Carpina', bairro: 'Centro' }), 0); // nada cadastrado: grátis
+
+  const cfg = montarConfigEntrega([
+    { id: '1', cidade: 'Carpina', bairro: 'Centro', taxa: '5.00' },
+    { id: '2', cidade: 'Carpina', bairro: 'São José', taxa: '0' },
+    { id: '3', cidade: 'Paudalho', bairro: null, taxa: '15.00' },
+  ]);
+  assert.deepStrictEqual(cfg.bairros.map((b) => b.bairro), ['Centro', 'São José']);
+  assert.deepStrictEqual(cfg.cidades.map((c) => c.cidade), ['Paudalho']);
+  assert.strictEqual(calcularTaxaEntrega(cfg, { cidade: 'carpina', bairro: ' centro ' }), 5);
+  assert.strictEqual(calcularTaxaEntrega(cfg, { cidade: null, bairro: 'Sao Jose' }), 0); // sem cidade = Carpina; sem acento ok
+  assert.strictEqual(calcularTaxaEntrega(cfg, { cidade: 'Carpina', bairro: 'Bairro Novo' }), null); // fora da lista: a combinar
+  assert.strictEqual(calcularTaxaEntrega(cfg, { cidade: 'Paudalho', bairro: 'Qualquer' }), 15);
+  assert.strictEqual(calcularTaxaEntrega(cfg, { cidade: 'Recife', bairro: 'Boa Viagem' }), null); // cidade fora da lista
+
+  assert.deepStrictEqual(validarTaxaEntrega({ tipo: 'bairro', bairro: '  Centro ', taxa: '5,50' }), { cidade: 'Carpina', bairro: 'Centro', taxa: 5.5 });
+  assert.deepStrictEqual(validarTaxaEntrega({ tipo: 'cidade', cidade: 'Tracunhaém', taxa: 20 }), { cidade: 'Tracunhaém', bairro: null, taxa: 20 });
+  assert.throws(() => validarTaxaEntrega({ tipo: 'cidade', cidade: 'Carpina', taxa: 5 }), ErroValidacao);
+  assert.throws(() => validarTaxaEntrega({ tipo: 'bairro', bairro: 'Centro', taxa: -1 }), ErroValidacao);
+  assert.throws(() => validarTaxaEntrega({ tipo: 'bairro', bairro: 'Centro', taxa: '' }), ErroValidacao);
+  assert.throws(() => validarTaxaEntrega({ tipo: 'bairro', bairro: 'C', taxa: 1 }), ErroValidacao);
 });

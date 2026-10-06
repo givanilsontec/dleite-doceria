@@ -220,6 +220,7 @@ function renderVendas({ el: raiz, aoExpirar }) {
           <a class="botao botao-secundario botao-pequeno" href="#/painel">Pedidos</a>
           <a class="botao botao-secundario botao-pequeno" href="#/painel/cardapio">Cardápio</a>
           <a class="botao botao-secundario botao-pequeno" href="#/painel/loja">Loja e horário</a>
+          <a class="botao botao-secundario botao-pequeno" href="#/painel/entrega">Entrega</a>
           <button type="button" class="botao botao-fantasma botao-pequeno" data-acao="senha">Senha</button>
           <button type="button" class="botao botao-fantasma botao-pequeno" data-acao="sair">Sair</button>
         </div>
