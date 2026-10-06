@@ -945,3 +945,10 @@ body.modal-aberto { overflow: hidden; }
 .tabela-vendas th, .tabela-vendas td { padding: 8px 6px; text-align: left; border-bottom: 1px solid var(--cacau-10); }
 .tabela-vendas th:not(:first-child), .tabela-vendas td:not(:first-child) { text-align: right; }
 .tabela-vendas th { color: var(--cacau-70); font-weight: 600; }
+
+/* ---------- Fundo com desenhos de doces (só no site dos clientes; o painel continua liso) ---------- */
+body:not(.modo-interno) {
+  background-image: url('../img/fundo-doces.svg');
+  background-size: 260px 260px;
+  background-repeat: repeat;
+}
